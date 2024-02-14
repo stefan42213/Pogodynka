@@ -37,27 +37,9 @@ class Weather():
 # Collectiong current temperature from web and saving it in 2 dims array [date(day-month-year) , temperature]
     def collecting_temp_n(self):
         self.temp = []
-        today = datetime.today()
-        formatted_date = today.strftime('%d-%m-%Y')
         index_b = re.search(r'<span class="value temp temp_c">', self.html_text).end()
         index_e = re.search(r'&deg;', self.html_text[index_b:]).start()
-        self.temp.append([formatted_date, self.html_text[index_b: index_b + index_e]])
-
-    # Collecting temperature for next 4 days , filtering html by data (day.month) and then adding it to the 2 dims array [date (day-month-year) , temperature]
-    def collecting_temp_tom(self):
-        next_days = 4
-        for i in range(1, next_days + 1):
-            date = datetime.today() + timedelta(days=i)
-            formatted_date = date.strftime('%d.%m')
-            match = re.search(f'{formatted_date}.*?<span class="value temp temp_c dark">(.*?)&deg;</span>',
-                              self.html_text)
-            formatted_date = date.strftime('%d-%m-%Y')
-
-            if match:
-                temperature = match.group(1)
-                self.temp.append([formatted_date, temperature])
-            else:
-                print("Temperature data not found for", formatted_date)
+        self.temp.append([self.html_text[index_b: index_b + index_e]])
 
 
 # Running class every 30 mins if there is no error with getting data , but if there is then wait 5 mins and try again
@@ -71,7 +53,6 @@ while (True):
         continue
     
     MyWeather.collecting_temp_n()
-    MyWeather.collecting_temp_tom()
     print(MyWeather.temp)
     print("Waiting 30 mins for next data actualization")
     time.sleep(1)
@@ -80,11 +61,11 @@ while (True):
     current_id = set_id  # Assign set_id to current_id
     current_time = datetime.now().strftime('%H:%M')  # Update current_time
     print(f"Current set_id: {current_id}")
-    if current_id == 48 or current_time == "00:00":
-        for i in range(48):
-            collection.delete_one({"_id": i })
+    if current_id == 48 or current_time == "00:00": #if id == 48 or local time == 00:00 then delete whole database and start counting over again
+        for i in range(48):                         # 00:00 means noon (new day)
+            collection.delete_one({"_id": i }) #mogłem zrobić delete_many ({}) ale ciul XD
         set_id = 0   
     input = { "_id":set_id,"day":day,"time":current_time,"temp": MyWeather.temp }
     collection.insert_one(input)
-    newvalues = { "$set": { "_id":set_id,"day":day,"time":current_time,"temp": MyWeather.temp } }
+    newvalues = { "$set": { "_id":set_id,"day":day,"time":current_time,"temp": MyWeather.temp } } #updates the dataset with new values
     collection.update_one(input, newvalues)
